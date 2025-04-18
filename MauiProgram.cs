@@ -18,6 +18,7 @@ namespace POSApp
             builder.Services.AddMauiBlazorWebView();
             builder.Services.AddSingleton<OrderReceiverService>();
             builder.Services.AddSingleton<POSDatabaseService>();
+            builder.Services.AddSingleton<PreparingOrderService>();
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();

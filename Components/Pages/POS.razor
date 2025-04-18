@@ -1,4 +1,6 @@
 ﻿@page "/pos"
+@inject PreparingOrderService PreparingService
+@inject NavigationManager Nav
 @inject OrderReceiverService OrderReceiver
 @implements IDisposable
 @using POSApp.Models;
@@ -103,7 +105,14 @@ else
                 await PosDb.UpdateOrderStatus(order.Id, "preparing");
             }
 
+            // Add to shared service
+            PreparingService.AddPreparingOrders(ordersToMark);
+
+            // Remove from current view
             ordersByIP.Remove(ip);
+
+            // Navigate to the table orders page
+            Nav.NavigateTo("/tableorders");
         }
 
         StateHasChanged();
@@ -123,7 +132,7 @@ else
     private Dictionary<string, string> ipToTableMap = new()
     {
         { "192.168.254.105", "1" },
-        { "192.168.254.100", "2" },
+        { "192.168.254.108", "2" },
         { "192.168.1.7", "B1" },
         // Add more IP-to-table mappings here
     };

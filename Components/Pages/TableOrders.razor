@@ -1,0 +1,33 @@
+﻿@page "/tableorders"
+@using POSApp.Services;
+@inject PreparingOrderService PreparingService
+
+<h3>Preparing Orders by Table</h3>
+
+@if (PreparingService.PreparingOrders.Any())
+{
+    var grouped = PreparingService.PreparingOrders
+        .GroupBy(order => order.TableNumber);
+
+    foreach (var tableGroup in grouped)
+    {
+        int totalItems = tableGroup.Sum(o => o.Quantity);
+        decimal totalPrice = tableGroup.Sum(o => o.Price * o.Quantity);
+
+        <div class="mb-4 p-3 shadow border rounded">
+            <h4>Table: @tableGroup.Key</h4>
+
+            @foreach (var order in tableGroup)
+            {
+                <p>@order.Name x @order.Quantity - ₱@order.Price</p>
+            }
+
+            <p class="fw-bold mt-2">Total Items: @totalItems</p>
+            <p class="fw-bold">Total Price: ₱@totalPrice</p>
+        </div>
+    }
+}
+else
+{
+    <p>No preparing orders yet.</p>
+}

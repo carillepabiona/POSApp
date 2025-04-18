@@ -1,0 +1,130 @@
+﻿@page "/pos"
+@inject OrderReceiverService OrderReceiver
+@implements IDisposable
+@using POSApp.Models;
+@using POSApp.Services;
+
+<h3>POS - Incoming Orders</h3>
+
+@if (!ordersByIP.Any())
+{
+    <p>No orders received yet.</p>
+}
+else
+{
+    @foreach (var entry in ordersByIP)
+    {
+        <div class="table-section mb-4 p-3 shadow border rounded">
+            <h4>
+                Table: @(ipToTableMap.ContainsKey(entry.Key)
+             ? ipToTableMap[entry.Key]
+             : $"Unknown ({entry.Key})")
+            </h4>
+
+            @foreach (var order in entry.Value)
+            {
+                <div class="order-box border-bottom py-2">
+                    <p><strong>@order.Name</strong> x @order.Quantity - ₱@order.Price</p>
+                    <p><small>@order.TableNumber</small> | @order.OrderedAt.ToString("g")</p>
+                </div>
+            }
+            <button class="btn btn-warning mt-2" @onclick="async () => await MarkAsPreparing(entry.Key)">
+                Mark as Preparing
+            </button>
+
+            <hr />
+        </div>
+    }
+}
+
+@code {
+    private Dictionary<string, List<OrderItem>> ordersByIP = new();
+    private bool _isSubscribed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!_isSubscribed)
+        {
+            OrderReceiver.OnOrdersReceived += HandleNewOrders;
+            _isSubscribed = true;
+        }
+
+        OrderReceiver.StartListening();
+
+        // Load previously saved pending orders
+        var pendingOrders = await PosDb.GetPendingOrdersAsync();
+
+        foreach (var order in pendingOrders)
+        {
+            if (!ordersByIP.ContainsKey(order.SourceIP))
+                ordersByIP[order.SourceIP] = new List<OrderItem>();
+
+            ordersByIP[order.SourceIP].Add(order);
+        }
+
+        StateHasChanged();
+    }
+
+    [Inject]
+    POSDatabaseService PosDb { get; set; }
+
+    private void HandleNewOrders(string ip, List<OrderItem> newOrders)
+    {
+        InvokeAsync(async () =>
+        {
+            if (newOrders == null || newOrders.Count == 0)
+                return;
+
+            if (!ordersByIP.ContainsKey(ip))
+                ordersByIP[ip] = new List<OrderItem>();
+
+            foreach (var order in newOrders)
+            {
+                order.SourceIP = ip;
+                order.Status = "pending"; // Make sure this is set!
+                ordersByIP[ip].Add(order);
+
+                await PosDb.SaveOrderAsync(order);
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    private async Task MarkAsPreparing(string ip)
+    {
+        if (ordersByIP.ContainsKey(ip))
+        {
+            var ordersToMark = ordersByIP[ip];
+
+            foreach (var order in ordersToMark)
+            {
+                order.Status = "preparing";
+                await PosDb.UpdateOrderStatus(order.Id, "preparing");
+            }
+
+            ordersByIP.Remove(ip);
+        }
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        if (_isSubscribed)
+        {
+            OrderReceiver.OnOrdersReceived -= HandleNewOrders;
+            _isSubscribed = false;
+        }
+
+        OrderReceiver.StopListening();
+    }
+
+    private Dictionary<string, string> ipToTableMap = new()
+    {
+        { "192.168.254.105", "1" },
+        { "192.168.254.100", "2" },
+        { "192.168.1.7", "B1" },
+        // Add more IP-to-table mappings here
+    };
+}

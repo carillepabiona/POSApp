@@ -1,0 +1,28 @@
+﻿@page "/saveorders"
+@using POSApp.Models;
+@using POSApp.Services;
+@inject POSDatabaseService PosDb
+
+
+<h3>Saved Orders</h3>
+
+@if (savedOrders == null || !savedOrders.Any())
+{
+    <p>No orders stored.</p>
+}
+else
+{
+    foreach (var order in savedOrders)
+    {
+        <p>@order.TableNumber: <strong>@order.Name</strong> x @order.Quantity - ₱@order.Price (@order.OrderedAt)</p>
+    }
+}
+
+@code {
+    private List<OrderItem> savedOrders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        savedOrders = await PosDb.GetOrdersAsync();
+    }
+}

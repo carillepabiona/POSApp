@@ -1,4 +1,5 @@
-﻿using System;
+﻿using POSApp.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
@@ -10,18 +11,19 @@ namespace POSApp.Services
 {
   public class OrderStatusUpdate
     {
-        public async Task SendOrderStatusUpdateAsync(int orderId, string status)
+        public static async Task SendStatusUpdateAsync(string newStatus, List<OrderItem> orders)
         {
-            using var client = new TcpClient("menu-app-ip", 6001); // Replace with actual IP or "localhost"
-            var data = new
-            {
-                OrderId = orderId,
-                NewStatus = status
-            };
+            using var client = new TcpClient();
+            await client.ConnectAsync("192.168.254.105", 5000); // IP of Menu App & port
 
-            string json = JsonSerializer.Serialize(data);
-            byte[] bytes = Encoding.UTF8.GetBytes(json);
-            await client.GetStream().WriteAsync(bytes, 0, bytes.Length);
+            using var stream = client.GetStream();
+            using var writer = new StreamWriter(stream) { AutoFlush = true };
+
+            foreach (var order in orders)
+            {
+                string message = $"{order.Id}|{newStatus}";
+                await writer.WriteLineAsync(message);
+            }
         }
     }
 

@@ -114,7 +114,7 @@ else
             // Navigate to the table orders page
             Nav.NavigateTo("/tableorders");
         }
-
+        await TcpSender.SendStatusUpdateAsync("preparing", ordersToMark);
         StateHasChanged();
     }
 
